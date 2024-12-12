@@ -2,7 +2,7 @@ import csv
 import random
 
 # Чтение данных из CSV файла
-file_path = "products.csv"  # Укажите путь к вашему CSV-файлу
+file_path = "products_with_scores.csv"  # Укажите путь к вашему CSV-файлу
 products = []
 
 with open(file_path, "r", encoding="utf-8") as csv_file:
@@ -38,8 +38,54 @@ def classify_products(products):
 
 classify_products(products)
 
+# Количество требуемых калорий на основе антропометрических данных
+print("Калькулятор калорий\nВведите свои данные для расчёта суточной калорийности.")
+
+# Ввод данных пользователя
+sex = input("Ваш пол (м/ж): ").strip().lower()
+age = int(input("Ваш возраст (в годах): "))
+weight = float(input("Ваш вес (в килограммах): "))
+height = float(input("Ваш рост (в сантиметрах): "))
+
+print("\nУкажите уровень активности:")
+print("1 - Минимальная (сидячий образ жизни)")
+print("2 - Низкая (легкие физические нагрузки 1-3 дня в неделю)")
+print("3 - Средняя (умеренные нагрузки 3-5 дней в неделю)")
+print("4 - Высокая (интенсивные нагрузки 6-7 дней в неделю)")
+print("5 - Очень высокая (очень интенсивные или физически тяжёлые нагрузки)")
+
+activity_level = int(input("Выберите уровень активности (1-5): "))
+
+    # Проверка пола и расчёт BMR (Базовый уровень метаболизма)
+if sex == 'м':
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5
+elif sex == 'ж':
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161
+else:
+    print("Некорректный ввод пола. Пожалуйста, укажите 'м' или 'ж'.")
+
+
+# Множитель активности
+activity_multipliers = {
+    1: 1.2,  # Минимальная
+    2: 1.375,  # Низкая
+    3: 1.55,  # Средняя
+    4: 1.725,  # Высокая
+    5: 1.9   # Очень высокая
+}
+
+if activity_level not in activity_multipliers:
+    print("Некорректный ввод уровня активности. Выберите число от 1 до 5.")
+
+    # Рассчёт общей потребности в калориях
+total_calories = int(bmr * activity_multipliers[activity_level])
+
+    # Вывод результата
+print("\nРезультат расчёта:")
+print(f"С учётом вашей активности, вам требуется: {total_calories:.2f} калорий/день.")
+
 # Указать целевые КБЖУ на день
-daily_calories = 2700
+daily_calories = total_calories
 fat_range = (25, 35)  # Пределы для жиров
 protein_percent = 15  # Процент от калорий для белков
 
@@ -70,7 +116,7 @@ weekly_protein_grams = weekly_protein_calories / 4
 weekly_carb_grams = weekly_carb_calories / 4
 
 def generate_weekly_menu(categories, weekly_fat, weekly_protein, weekly_carbs):
-    tolerance = 0.15  # Допустимое отклонение в 5%
+    tolerance = 0.25  # Допустимое отклонение в 5%
     max_attempts = 10000  # Максимальное количество попыток для поиска меню
 
     target_fat_min = weekly_fat * (1 - tolerance)
