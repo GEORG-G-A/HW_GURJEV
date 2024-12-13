@@ -5,10 +5,8 @@ import csv
 import re
 import os
 import config
-from datetime import datetime
 
-CLIENT_ID = '56e50044-520d-4630-b002-5311870c278a'
-SECRET = 'NTZlNTAwNDQtNTIwZC00NjMwLWIwMDItNTMxMTg3MGMyNzhhOjVkNzM3OTk3LWEyMTAtNGM4My04ZDgzLWM5MWFhODdkMjI1MA=='
+SECRET = 'ZjM2YTgzNmEtMjQxYy00NTA2LWExZWEtY2EzMTMxNjE2NWQ4OjdkOGU0NTdlLTgwYzctNDJmMS1iOTY4LTNhM2NmYWE2ZjE2NQ=='
 
 
 def get_access_token() -> str:
@@ -44,99 +42,95 @@ def send_prompt(msg: str, access_token: str):
     }
 
     response = requests.post(url=url, headers=headers, data=payload, verify=False)
+
     try:
-        answer = response.json()['choices'][0]['message']['content']
-    except KeyError as e:
-        print(e)
-    return answer
+        response_data = response.json()
+
+        if 'choices' in response_data:
+            return response_data['choices'][0]['message']['content']
+        else:
+            print(f"Ответ не содержит 'choices': {response_data}")
+            return "Ошибка: нет данных для оценки"
+    except json.JSONDecodeError:
+        print("Ошибка при разборе JSON-ответа")
+        return "Ошибка: неверный формат ответа"
+    except Exception as e:
+        print(f"Произошла ошибка: {str(e)}")
+        return f"Ошибка: {str(e)}"
 
 
 def rate_product(product_name, description):
-    prompt = f"Оцени продукт по шкале от 1 до 10 по следующим критериям: полезность, частота потребления обычным человеком, натуральность. Продукт: {product_name}, описание: {description}. Верни численные оценки для каждого критерия в формате: полезность: X, частота потребления: Y, натуральность: Z. Ответа строго три числа!!! НИЧЕГО БОЛЬШЕ!"
+    prompt = (f"Оцени продукт по шкале от 1 до 10 по следующим критериям: полезность, потребность организмом, качество макронутриентов. Продукт: {product_name}, описание: {description}. Верни численные оценки для каждого критерия в формате: полезность: X, потребность организмом: Y, качество состава: Z. Ответа строго три числа!!! НИЧЕГО БОЛЬШЕ!")
     return prompt
 
 
 def extract_and_calculate_average(rating: str):
-    # Паттерн для поиска чисел
-    pattern = r"\D*(\d+)\D*"  # Ищем все числа в строке, окруженные нецифровыми символами
-
-    # Находим все числа в строке
+    pattern = r"\D*(\d+)\D*"
     numbers = [int(num) for num in re.findall(pattern, rating)]
 
     if numbers:
-        # Рассчитываем среднее
         return sum(numbers) / len(numbers)
     else:
         return None
 
 
-def generate_output_filename(output_csv):
-    # Проверяем, существует ли файл с таким именем
-    if not os.path.exists(output_csv):
-        return output_csv
-
-    # Если файл существует, добавляем метку времени к имени файла
-    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-    name, ext = os.path.splitext(output_csv)
-    new_filename = f"{name}_{timestamp}{ext}"
-
-    return new_filename
-
-
 def process_products(input_csv, output_csv):
-    # Получаем токен для работы с API
     access_token = get_access_token()
 
-    # Генерируем имя файла, чтобы не перезаписывать существующий
-    output_csv = generate_output_filename(output_csv)
+    # Создаем файл, если его нет
+    if not os.path.exists(output_csv):
+        with open(output_csv, 'w', newline='', encoding='utf-8') as outfile:
+            with open(input_csv, newline='', encoding='utf-8') as csvfile:
+                reader = csv.DictReader(csvfile)
+                # Записываем заголовки без Ingredients
+                fieldnames = [field for field in reader.fieldnames if field != 'Ingredients'] + ['Score']
+                writer = csv.DictWriter(outfile, fieldnames=fieldnames)
+                writer.writeheader()
 
-    # Открываем CSV с товарами для чтения и для записи результата
+    # Открываем CSV файлы для чтения и записи
     with open(input_csv, newline='', encoding='utf-8') as csvfile, \
-            open(output_csv, 'w', newline='', encoding='utf-8') as outfile:
+         open(output_csv, 'r+', newline='', encoding='utf-8') as outfile:
 
         reader = csv.DictReader(csvfile)
-        fieldnames = reader.fieldnames + ['Score']  # Добавляем колонку для оценок
+        # Записываем заголовки без Ingredients
+        fieldnames = [field for field in reader.fieldnames if field != 'Ingredients'] + ['Score']
         writer = csv.DictWriter(outfile, fieldnames=fieldnames)
 
-        # Записываем заголовки в новый файл
-        writer.writeheader()
+        # Читаем существующие записи и уже обработанные PLU с оценками
+        processed_plu = {row['PLU']: row['Score'] for row in csv.DictReader(open(output_csv, 'r', encoding='utf-8'))}
 
-        # Сохраняем уже обработанные PLU и их оценки
-        processed_plu = set()
+        outfile.seek(0, os.SEEK_END)
 
-        # Обрабатываем каждый товар
+        # Обрабатываем товары
         for row in reader:
-            plu = row['PLU']  # Используем PLU для проверки
+            plu = row['PLU']
 
-            # Если PLU уже обработан, пропускаем этот товар
-            if plu in processed_plu:
-                print(f"Продукт с PLU {plu} уже был обработан. Пропускаем.")
-                writer.writerow(row)  # Записываем строку без изменений
+            # Если товар уже оценен и оценка меньше 10, пропускаем
+            if plu in processed_plu and processed_plu[plu] != 'N/A' and float(processed_plu[plu]) < 10:
                 continue
 
             product_name = row['Product Name']
-            description = f"Вес: {row['Weight']} г, Белки: {row['Nutrients Protein']} г, Жиры: {row['Nutrients Fat']} г, Углеводы: {row['Nutrients Carbs']} г, Калории: {row['Nutrients Calories']} ккал."
+            # Мы игнорируем Ingredients, записываем только описание для оценки
+            ingredients = row.get('Ingredients', 'Не указаны')
+            description = (
+                f"Вес: {row['Weight']} г, Белки: {row['Nutrients Protein']} г, "
+                f"Жиры: {row['Nutrients Fat']} г, Углеводы: {row['Nutrients Carbs']} г, "
+                f"Калории: {row['Nutrients Calories']} ккал, Ингредиенты: {ingredients}."
+            )
 
-            # Получаем оценку товара
             prompt = rate_product(product_name, description)
             rating = send_prompt(prompt, access_token)
 
-            # Извлекаем и рассчитываем среднее значение оценки
             average_rating = extract_and_calculate_average(rating)
 
-            # Если средняя оценка валидна, добавляем её в строку
+            # Если есть валидная оценка, записываем её, иначе 'N/A'
             if average_rating is not None:
                 row['Score'] = round(average_rating, 2)
             else:
-                row['Score'] = 'N/A'  # В случае ошибки в ответе
+                row['Score'] = 'N/A'
 
-            # Записываем строку с результатами в новый CSV файл
+            # Выводим строку без Ingredients
+            row = {key: value for key, value in row.items() if key != 'Ingredients'}
+
             writer.writerow(row)
-
-            # Добавляем PLU в список обработанных
-            processed_plu.add(plu)
-
-            print(f"Продукт: {product_name}")
-            print(f"Оценка: {row['Score']}\n")
-
-process_products(config.products, config.products_with_scores)
+            processed_plu[plu] = row['Score']

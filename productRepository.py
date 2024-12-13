@@ -83,45 +83,6 @@ class HttpRequest:
         logging.debug(traceback.format_exc())
 
 
-def calculate_mass(product):
-    uom = product.get('uom')
-    step = float(product.get('step', 1))
-    clarification = product.get('property_clarification', '').lower()
-
-    mass_in_grams = -1
-
-    # Если UOM - килограммы
-    if uom == "кг":
-        try:
-            mass_in_grams = step * 1000
-        except ValueError:
-            print(f"Не удалось обработать массу для продукта: {product['name']}")
-
-    # Если UOM - штуки
-    elif uom == "шт":
-        # Попробуем извлечь массу из property_clarification
-        gram_match = re.search(r"(\d+)\s*г", clarification)
-        kilogram_match = re.search(r"(\d+)\s*кг", clarification)
-        ml_match = re.search(r"(\d+)\s*мл", clarification)
-        l_match = re.search(r"(\d+)\s*л", clarification)
-
-        if gram_match:
-            mass_in_grams = float(gram_match.group(1))
-        elif ml_match:
-            # Предполагаем плотность воды, 1 мл = 1 г
-            mass_in_grams = float(ml_match.group(1))
-        elif l_match:
-            # Предполагаем плотность воды, 1 мл = 1 г
-            mass_in_grams = float(l_match.group(1)) * 1000
-        elif kilogram_match:
-            # Предполагаем плотность воды, 1 мл = 1 г
-            mass_in_grams = float(kilogram_match.group(1)) * 1000
-
-        mass_in_grams *= step
-
-    return mass_in_grams
-
-
 class CsvHandler:
     @staticmethod
     def write_category_to_csv(categories, filename):
@@ -187,46 +148,6 @@ class CsvHandler:
         except Exception as e:
             logging.error(f"Failed to write product to CSV: {e}")
             logging.debug(traceback.format_exc())
-
-    @staticmethod
-    def write_product_to_db(product, filename='products.csv'):
-        fieldnames = [
-            'Product Name', 'PLU', 'UOM', 'Step', 'Property Clarification', 'Weight',
-            'Nutrients Protein', 'Nutrients Fat', 'Nutrients Carbs', 'Nutrients Calories'
-        ]
-
-        try:
-            if not product.get('nutrients'):
-                logging.warning(f"Skipping product {product.get('name', 'Unknown Name')} due to missing nutrients.")
-                return  # Пропустить продукт
-            # Prepare the product data for writing
-            row = {
-                'Product Name': product.get('name', 'Unknown Name'),
-                'PLU': product.get('plu'),
-                'UOM': product.get('uom'),
-                'Step': product.get('step'),
-                'Property Clarification': product.get('property_clarification', ''),
-                'Weight': calculate_mass(product),
-                'Nutrients Protein': next((item['value'] for item in product['nutrients'] if item['text'] == 'белки'),''),
-                'Nutrients Fat': next((item['value'] for item in product['nutrients'] if item['text'] == 'жиры'), ''),
-                'Nutrients Carbs': next((item['value'] for item in product['nutrients'] if item['text'] == 'углеводы'),
-                                        ''),
-                'Nutrients Calories': next((item['value'] for item in product['nutrients'] if item['text'] == 'ккал'),
-                                           '')
-            }
-
-            # Write the data to the CSV file
-            with open(filename, mode='a', newline='', encoding='utf-8') as file:
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                if file.tell() == 0:  # Write the header only if the file is empty
-                    writer.writeheader()
-                writer.writerow(row)
-
-            logging.info(f"Saved product: {product['name']} (PLU: {product['plu']}) to CSV.")
-
-        except Exception as e:
-            logging.debug(traceback.format_exc())
-
 
 def product_exists_in_csv(plu, filename):
     try:

@@ -6,6 +6,7 @@ import traceback
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+
 def calculate_mass(product):
     uom = product.get('uom')
     step = float(product.get('step', 1))
@@ -46,26 +47,30 @@ def calculate_mass(product):
 
 
 def save_filtered_products(input_file, output_file):
+    # Новые столбцы в CSV
     fieldnames = [
-        'Product Name', 'PLU', 'UOM', 'Step', 'Property Clarification', 'Weight',
-        'Nutrients Protein', 'Nutrients Fat', 'Nutrients Carbs', 'Nutrients Calories'
+        'Product Name', 'PLU', 'UOM', 'Step', 'Rating', 'Rates Count', 'Price',
+        'Property Clarification', 'Weight', 'Nutrients Protein', 'Nutrients Fat',
+        'Nutrients Carbs', 'Nutrients Calories', 'Ingredients'
     ]
 
     try:
         with open(input_file, mode='r', encoding='utf-8') as infile, \
-             open(output_file, mode='w', newline='', encoding='utf-8') as outfile:
+                open(output_file, mode='w', newline='', encoding='utf-8') as outfile:
 
             reader = csv.DictReader(infile)
             writer = csv.DictWriter(outfile, fieldnames=fieldnames)
 
-            writer.writeheader()  # Записываем заголовок в файл
+            writer.writeheader()  # Записываем заголовок в выходной файл
 
             for row in reader:
                 try:
-                    # Парсим nutrients из строки JSON
+                    # Парсим поля JSON из входного CSV
                     nutrients = ast.literal_eval(row.get('nutrients', '[]'))
+                    price_data = ast.literal_eval(row.get('prices', '[]'))
+                    rating_data = ast.literal_eval(row.get('rating', '{}'))
 
-                    # Пропускаем продукт, если nutrients пустой
+                    # Пропускаем строки без nutrients
                     if not nutrients:
                         continue
 
@@ -75,18 +80,25 @@ def save_filtered_products(input_file, output_file):
                         'PLU': row.get('plu'),
                         'UOM': row.get('uom'),
                         'Step': row.get('step'),
+                        'Rating': rating_data.get('rating_average', ''),  # Средняя оценка
+                        'Rates Count': rating_data.get('rates_count', ''),  # Количество отзывов
+                        'Price': next(
+                            (item['value'] for item in price_data if item['placement_type'] == 'regular_primary'), ''),
+                        # Цена
                         'Property Clarification': row.get('property_clarification', ''),
                         'Weight': calculate_mass(row),
                         'Nutrients Protein': next((item['value'] for item in nutrients if item['text'] == 'белки'), ''),
                         'Nutrients Fat': next((item['value'] for item in nutrients if item['text'] == 'жиры'), ''),
-                        'Nutrients Carbs': next((item['value'] for item in nutrients if item['text'] == 'углеводы'), ''),
-                        'Nutrients Calories': next((item['value'] for item in nutrients if item['text'] == 'ккал'), '')
+                        'Nutrients Carbs': next((item['value'] for item in nutrients if item['text'] == 'углеводы'),
+                                                ''),
+                        'Nutrients Calories': next((item['value'] for item in nutrients if item['text'] == 'ккал'), ''),
+                        'Ingredients': row.get('ingredients', '')  # Ингредиенты
                     }
 
+                    # Запись строки в выходной файл
                     writer.writerow(filtered_row)
 
                 except Exception as product_error:
-                    logging.error(f"Failed to process product {row.get('name', 'Unknown Name')}. Error: {product_error}")
                     logging.debug(traceback.format_exc())
 
     except Exception as e:
