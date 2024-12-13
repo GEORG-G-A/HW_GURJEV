@@ -64,7 +64,6 @@ elif sex == 'ж':
 else:
     print("Некорректный ввод пола. Пожалуйста, укажите 'м' или 'ж'.")
 
-
 # Множитель активности
 activity_multipliers = {
     1: 1.2,  # Минимальная
@@ -182,12 +181,12 @@ def generate_weekly_menu(categories, weekly_fat, weekly_protein, weekly_carbs):
             print("Weekly Menu:")
             for item in weekly_products:
                 print(f"- {item['Product Name']}: {item['Portion (g/ml)']:.2f}g/ml, "
-                      f"Protein: {item['Protein']:.2f}g, Fat: {item['Fat']:.2f}g, Carbs: {item['Carbs']:.2f}g, Score: {item['Score']:.2f}")
+                      f"Protein: {item['Protein']:.2f}g, Fat: {item['Fat']:.2f}g, Carbs: {item['Carbs']:.2f}g,")
             print()
             return weekly_products
 
-    print("Failed to generate a menu within the allowed attempts.")
-    return None
+   #print("Failed to generate a menu within the allowed attempts.")
+   #return None
 
 # Генерация меню
 weekly_menu = generate_weekly_menu(
