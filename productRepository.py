@@ -26,7 +26,6 @@ class HttpRequest:
                     if self.cookies:
                         self.headers['Cookie'] = '; '.join([f"{key}={value}" for key, value in self.cookies.items()])
 
-                    logging.info(f"Requesting URL: {url}")
                     self.conn.request("GET", url, '', self.headers)
                     res = self.conn.getresponse()
                     data = res.read()
@@ -120,51 +119,31 @@ def calculate_mass(product):
 
         mass_in_grams *= step
 
-
     return mass_in_grams
+
 
 class CsvHandler:
     @staticmethod
-    def write_category_to_csv(categories, filename='categories.csv'):
-        fieldnames = ['Category ID', 'Category', 'Subcategory ID', 'Subcategory', 'Downloaded']
+    def write_category_to_csv(categories, filename):
+        fieldnames = ['Category ID', 'Category', 'Subcategory ID', 'Subcategory']
         try:
             with open(filename, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.DictWriter(file, fieldnames=fieldnames)
                 writer.writeheader()
                 for category in categories:
                     for subcategory in category.get('subcategories', []):
-                        downloaded = 'True' if subcategory.get('downloaded', False) else 'False'
                         writer.writerow({
                             'Category ID': category['id'],
                             'Category': category['name'],
                             'Subcategory ID': subcategory['id'],
-                            'Subcategory': subcategory['name'],
-                            'Downloaded': downloaded
+                            'Subcategory': subcategory['name']
                         })
         except Exception as e:
             logging.error(f"Failed to write categories to CSV: {e}")
             logging.debug(traceback.format_exc())
 
     @staticmethod
-    def write_row_to_csv(row, filename='products.csv'):
-        fieldnames = ['Product Name', 'PLU', 'Nutrients']
-        try:
-            if product_exists_in_csv(row['PLU'], filename):
-                logging.info(f"Product with PLU: {row['PLU']} already exists in CSV. Skipping...")
-                return
-
-            with open(filename, mode='a', newline='', encoding='utf-8') as file:
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                if file.tell() == 0:
-                    writer.writeheader()
-                writer.writerow(row)
-                logging.info(f"Saved product: {row['Product Name']} (PLU: {row['PLU']}) to CSV.")
-        except Exception as e:
-            logging.error(f"Failed to write row to CSV: {e}")
-            logging.debug(traceback.format_exc())
-
-    @staticmethod
-    def read_categories_from_csv(filename='categories.csv'):
+    def read_categories_from_csv(filename):
         categories = []
         try:
             with open(filename, mode='r', newline='', encoding='utf-8') as file:
@@ -189,7 +168,28 @@ class CsvHandler:
         return categories
 
     @staticmethod
-    def write_product_to_csv(product, filename='products.csv'):
+    def write_dynamic_product_to_csv(product, filename):
+        try:
+            # Открыть файл в режиме добавления
+            with open(filename, mode='a', newline='', encoding='utf-8') as file:
+                # Извлечь все ключи из продукта
+                fieldnames = list(product.keys())
+
+                # Создать DictWriter с динамическими заголовками
+                writer = csv.DictWriter(file, fieldnames=fieldnames)
+
+                # Если файл пустой, записать заголовки
+                if file.tell() == 0:
+                    writer.writeheader()
+
+                # Записать строку с данными продукта
+                writer.writerow(product)
+        except Exception as e:
+            logging.error(f"Failed to write product to CSV: {e}")
+            logging.debug(traceback.format_exc())
+
+    @staticmethod
+    def write_product_to_db(product, filename='products.csv'):
         fieldnames = [
             'Product Name', 'PLU', 'UOM', 'Step', 'Property Clarification', 'Weight',
             'Nutrients Protein', 'Nutrients Fat', 'Nutrients Carbs', 'Nutrients Calories'
@@ -225,47 +225,52 @@ class CsvHandler:
             logging.info(f"Saved product: {product['name']} (PLU: {product['plu']}) to CSV.")
 
         except Exception as e:
-            logging.error(f"Failed to write product {product['name']} to CSV: {e}")
-            logging.debug(e)
+            logging.debug(traceback.format_exc())
 
 
-def product_exists_in_csv(plu, filename='products.csv'):
+def product_exists_in_csv(plu, filename):
     try:
         with open(filename, mode='r', newline='', encoding='utf-8') as file:
             reader = csv.DictReader(file)
             for row in reader:
-                if row['PLU'] == str(plu):
+                if row['plu'] == str(plu):
                     return True
     except Exception as e:
         logging.error(f"Failed to read products from CSV to check existence: {e}")
-        logging.debug(traceback.format_exc())
+
     return False
 
 
-def main():
+def get_categories(filename):
     conn = http.client.HTTPSConnection("5d.5ka.ru", timeout=30)
     headers = {
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
         'Cookie': 'SRV=cd724344-8da6-4878-8d00-1a74c6f83755; TS018c7dc5=01a2d8bbf43f22e3fce54fc3d890180844d7886df8fed2ce938af00dce4ee9cb0ef57fbd2118149df50ab7eb1a7930999fe85a4b6628b688b18856a8317de06a49752de828; spid=1733520799386_e543c3b91a10b7c053082fc3c63b0279_1rbutvtmmdxdebk6; spsc=1733536555906_02907cc99f04884d84155d42063e60d7_86072290ac14b79035acac92a3210c54'
     }
 
-    logging.info("Fetching categories and subcategories...")
     request = HttpRequest(conn, headers)
-    response_json = request.make_request("/api/catalog/v1/stores/Y232/categories?mode=delivery&include_subcategories=1")
+    url = "/api/catalog/v1/stores/Y232/categories?mode=delivery&include_subcategories=1"
 
-    # if response_json is None:
-    #     logging.error("Failed to fetch categories. Exiting...")
-    # else:
-    #     CsvHandler.write_category_to_csv(response_json)
+    response_json = request.make_request(url)
 
-    categories = CsvHandler.read_categories_from_csv()
+    if response_json is None:
+        return
+
+    CsvHandler.write_category_to_csv(response_json, filename)
+
+
+def getProducts(categoryFileName, productsFileName):
+    conn = http.client.HTTPSConnection("5d.5ka.ru", timeout=30)
+    headers = {
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'Cookie': 'SRV=cd724344-8da6-4878-8d00-1a74c6f83755; TS018c7dc5=01a2d8bbf43f22e3fce54fc3d890180844d7886df8fed2ce938af00dce4ee9cb0ef57fbd2118149df50ab7eb1a7930999fe85a4b6628b688b18856a8317de06a49752de828; spid=1733520799386_e543c3b91a10b7c053082fc3c63b0279_1rbutvtmmdxdebk6; spsc=1733536555906_02907cc99f04884d84155d42063e60d7_86072290ac14b79035acac92a3210c54'
+    }
+
+    request = HttpRequest(conn, headers)
+
+    categories = CsvHandler.read_categories_from_csv(categoryFileName)
     for category in categories:
         for subcategory in category['subcategories']:
-            if subcategory.get('downloaded', False):
-                logging.info(f"Products for subcategory {subcategory['name']} already downloaded. Skipping...")
-                continue
-
-            logging.info(f"Fetching products for subcategory: {subcategory['name']}...")
             url = f"/api/catalog/v1/stores/Y232/categories/{subcategory['id']}/products?mode=delivery&limit=200"
             products_json = request.make_request(url)
 
@@ -277,8 +282,7 @@ def main():
             for product in products:
                 plu = product.get('plu')
                 if plu:
-                    if product_exists_in_csv(plu):
-                        logging.info(f"Product with PLU: {plu} already exists in CSV. Skipping...")
+                    if product_exists_in_csv(plu, productsFileName):
                         continue
 
                     product_url = f"/api/catalog/v2/stores/Y232/products/{plu}?mode=delivery&include_restrict=false"
@@ -288,11 +292,4 @@ def main():
                         logging.error(f"Failed to fetch product details for PLU: {plu}")
                         continue
 
-                    CsvHandler.write_product_to_csv(product_json)
-
-            subcategory['downloaded'] = True
-            CsvHandler.write_category_to_csv(categories)
-
-
-if __name__ == "__main__":
-    main()
+                    CsvHandler.write_dynamic_product_to_csv(product_json, productsFileName)

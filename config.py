@@ -1,0 +1,6 @@
+row_categories = 'row_categories.csv'
+categories = 'categories.csv'
+row_products = 'row_products.csv'
+products = 'products.csv'
+processed_products = 'processed_products.csv'
+products_with_scores = 'products_with_scores.csv'

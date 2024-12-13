@@ -4,6 +4,7 @@ import json
 import csv
 import re
 import os
+import config
 from datetime import datetime
 
 CLIENT_ID = '56e50044-520d-4630-b002-5311870c278a'
@@ -138,6 +139,4 @@ def process_products(input_csv, output_csv):
             print(f"Продукт: {product_name}")
             print(f"Оценка: {row['Score']}\n")
 
-
-# Пример вызова функции с файлом товаров
-process_products('products.csv', 'products_with_scores.csv')
+process_products(config.products, config.products_with_scores)
