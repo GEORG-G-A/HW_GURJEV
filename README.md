@@ -22,13 +22,15 @@ project_root/
 * productRepository.py # web-scrapping продуктов с сайта магазина "Пятёрочка"
 * config.py # название всех файлов в одном месте
 * database.py # в перспективе сохраняет базу данных; переводит products.сsv в processed_products.csv
-* --------------------------------------------------------------
+------------------------------------------------------------------
 * categories.csv #Список категорий и подкатегорий продуктов
 * row_products.csv #Данные с сайта
 * product.csv # row_products.csv без лишних столбцов
 * processed_products # products.csv в рабочем виде без "оценки качества продуктов" (Score)
 * product_with_scores.csv # processed_products со Score
-* --------------------------------------------------------------
+* product_with_scores_cleaned # product_with_scores без дубликатов
+* product_with_scores_cleaned_updated # product_with_scores_cleaned с обновленными параметрами Nutrients Fat
+------------------------------------------------------------------
 * EDA.ipynd #процесс подготовки и анализа данных от categories.csv до products_with_scores.csv
 * Metrics.ipynd # обоснование и визуализация метрик для оценки качества готового DF
 
