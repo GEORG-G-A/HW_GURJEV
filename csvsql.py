@@ -1,13 +1,12 @@
 import sqlite3 as sq
 import csv
 import time
-import argparse
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # Функция для обновления базы данных
 def update_database(csv_file):
-    connection = sq.connect('Project_5oro4ka')
+    connection = sq.connect('Project_5oro4ka.db')  # Добавлено расширение .db
     cursor = connection.cursor()
 
     # Создание таблицы (если она не существует)
@@ -26,12 +25,13 @@ def update_database(csv_file):
         "Nutrients Fat" REAL,
         "Nutrients Carbs" REAL,
         "Nutrients Calories" REAL,
+        Desirability REAL,
         Score REAL
     )
     """)
     connection.commit()
 
-    # Очистка таблицы перед вставкой новых данных (по желанию)
+    #Очистка таблицы перед вставкой новых данных (по желанию)
     cursor.execute("DELETE FROM products_fin")
     connection.commit()
 
@@ -45,14 +45,14 @@ def update_database(csv_file):
                 INSERT INTO products_fin (
                     "Product Name", PLU, UOM, Step, Rating, "Rates Count", Price, 
                     "Property Clarification", Weight, "Nutrients Protein", 
-                    "Nutrients Fat", "Nutrients Carbs", "Nutrients Calories", Score
+                    "Nutrients Fat", "Nutrients Carbs", "Nutrients Calories", Desirability, Score
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     row["Product Name"], row["PLU"], row["UOM"], row["Step"], row["Rating"],
                     row["Rates Count"], row["Price"], row["Property Clarification"],
                     row["Weight"], row["Nutrients Protein"], row["Nutrients Fat"],
-                    row["Nutrients Carbs"], row["Nutrients Calories"], row["Score"]
+                    row["Nutrients Carbs"], row["Nutrients Calories"], row["Desirability"], row["Score"]
                 ))
             except Exception as e:
                 print(f"Ошибка: {e} для строки {row}")
@@ -68,16 +68,20 @@ class Watcher(FileSystemEventHandler):
 
     def on_modified(self, event):
         # Проверка, что изменился нужный CSV файл
-        if event.src_path == self.csv_file:
+        if event.src_path.endswith(self.csv_file):
             print(f"Файл {self.csv_file} изменен. Обновление базы данных...")
             update_database(self.csv_file)
 
-# Функция запуска
+# Функция запуска наблюдения за файлом
 def start_monitoring(csv_file):
+    print(f"Запуск наблюдения за файлом: {csv_file}")
+    update_database(csv_file)  # Первоначальное обновление базы данных
+
     event_handler = Watcher(csv_file)
     observer = Observer()
     observer.schedule(event_handler, path=".", recursive=False)
     observer.start()
+
     try:
         while True:
             time.sleep(1)
@@ -85,21 +89,11 @@ def start_monitoring(csv_file):
         observer.stop()
     observer.join()
 
-# Функция остановки наблюдения
-def stop_monitoring():
-    print("Остановка наблюдения...")
-    exit(0)
-
-# Обработка аргументов командной строки
-parser = argparse.ArgumentParser(description="Automated database updater for CSV changes.")
-parser.add_argument("action", choices=["start", "stop"], help="Action to perform: 'start' or 'stop'.")
-
-args = parser.parse_args()
-
-# Начало выполнения в зависимости от аргумента
-if args.action == "start":
-    print("Запуск наблюдения за файлом...")
+# Основная логика выполнения
+if __name__ == "__main__":
+    # Задайте имя CSV файла, который нужно использовать
     csv_file = "products_with_scores_cleaned_updated.csv"
+
+    # Запуск обновления и наблюдения
     start_monitoring(csv_file)
-elif args.action == "stop":
-    stop_monitoring()
+

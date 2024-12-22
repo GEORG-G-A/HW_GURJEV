@@ -1,216 +1,210 @@
-import http.client
-import json
-import time
 import csv
-import traceback
-import re
+import http.client
 import logging
+import os
+from typing import List, Dict
+from prefect import task, flow
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Helper imports
+import HttpRequest
+from CsvHandler import CsvHandler
 
+# Remove any existing handlers to prevent logs from showing
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
 
-class HttpRequest:
-    def __init__(self, conn, headers, retries=3, delay=2, max_redirects=5):
-        self.conn = conn
-        self.headers = headers
-        self.retries = retries
-        self.delay = delay
-        self.max_redirects = max_redirects
-        self.cookies = {}
-
-    def make_request(self, url):
-        redirects = 0
-        while redirects < self.max_redirects:
-            for attempt in range(self.retries):
-                try:
-                    if self.cookies:
-                        self.headers['Cookie'] = '; '.join([f"{key}={value}" for key, value in self.cookies.items()])
-
-                    self.conn.request("GET", url, '', self.headers)
-                    res = self.conn.getresponse()
-                    data = res.read()
-                    status_code = res.status
-                    reason = res.reason
-
-                    if 200 <= status_code < 300:
-                        return json.loads(data.decode("utf-8"))
-
-                    if status_code == 504:
-                        logging.warning(f"Gateway Timeout (504) on {url}. Retrying...")
-                        time.sleep(self.delay)
-                        self.delay *= 2
-                        return
-
-                    if status_code in (301, 302, 303, 307, 308):
-                        location = res.getheader("Location")
-                        if not location:
-                            logging.error(f"Redirect response received, but no Location header provided for URL: {url}")
-                            return None
-
-                        self._handle_redirect(res)
-                        url = location
-                        redirects += 1
-                        break
-
-                    logging.error(f"HTTP Error {status_code} ({reason}) on {url}")
-                    logging.debug(f"Response body: {data.decode('utf-8', errors='replace')}")
-
-                except json.JSONDecodeError as json_err:
-                    self._handle_error(f"JSON decoding error on {url} attempt {attempt + 1}: {json_err}")
-                except Exception as e:
-                    self._handle_error(f"Error fetching {url} on attempt {attempt + 1}: {e}")
-
-                if attempt < self.retries - 1:
-                    time.sleep(self.delay)
-                    self.delay *= 2
-                else:
-                    self._handle_error(f"All {self.retries} attempts failed for URL: {url}")
-                    return None
-
-        logging.error(f"Too many redirects for URL: {url}")
-        return None
-
-    def _handle_redirect(self, res):
-        set_cookie_header = res.getheader('set-cookie')
-        if set_cookie_header:
-            for cookie in set_cookie_header.split(';'):
-                key_value = cookie.split('=')
-                if len(key_value) == 2:
-                    self.cookies[key_value[0].strip()] = key_value[1].strip()
-
-    def _handle_error(self, message):
-        logging.error(message)
-        logging.debug(traceback.format_exc())
+# Установим уровень логирования на ERROR, чтобы исключить все менее важные сообщения
+logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-class CsvHandler:
+def load_desirability_map(subcategory_csv: str) -> Dict[str, str]:
+    """
+    Загружает карту сабкатегорий и их соответствующей желательности.
+    Возвращает словарь: {subcategory_id: desirability}.
+    """
+    desirability_map = {}
+    try:
+        with open(subcategory_csv, mode='r', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                desirability_map[row["Subcategory ID"]] = row["Desirability"]
+    except Exception as e:
+        logging.error(f"Failed to read subcategories CSV: {e}")
+    return desirability_map
+
+
+class CsvProductManager:
     @staticmethod
-    def write_category_to_csv(categories, filename):
-        fieldnames = ['Category ID', 'Category', 'Subcategory ID', 'Subcategory']
-        try:
-            with open(filename, mode='w', newline='', encoding='utf-8') as file:
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-                writer.writeheader()
-                for category in categories:
-                    for subcategory in category.get('subcategories', []):
-                        writer.writerow({
-                            'Category ID': category['id'],
-                            'Category': category['name'],
-                            'Subcategory ID': subcategory['id'],
-                            'Subcategory': subcategory['name']
-                        })
-        except Exception as e:
-            logging.error(f"Failed to write categories to CSV: {e}")
-            logging.debug(traceback.format_exc())
-
-    @staticmethod
-    def read_categories_from_csv(filename):
-        categories = []
+    def product_exists_in_csv(plu: str, filename: str) -> bool:
+        """
+        Checks if a product with the given PLU exists in the CSV file.
+        Returns True if exists, otherwise False.
+        """
         try:
             with open(filename, mode='r', newline='', encoding='utf-8') as file:
                 reader = csv.DictReader(file)
-                for row in reader:
-                    category_id = row['Category ID']
-                    subcategory_id = row['Subcategory ID']
-                    category_name = row['Category']
-                    subcategory_name = row['Subcategory']
-
-                    category = next((cat for cat in categories if cat['id'] == category_id), None)
-                    if not category:
-                        category = {'id': category_id, 'name': category_name, 'subcategories': []}
-                        categories.append(category)
-
-                    category['subcategories'].append({'id': subcategory_id, 'name': subcategory_name})
-
+                return any(row['plu'] == str(plu) for row in reader)
         except Exception as e:
-            logging.error(f"Failed to read categories from CSV: {e}")
-            logging.debug(traceback.format_exc())
-
-        return categories
-
-    @staticmethod
-    def write_dynamic_product_to_csv(product, filename):
-        try:
-            # Открыть файл в режиме добавления
-            with open(filename, mode='a', newline='', encoding='utf-8') as file:
-                # Извлечь все ключи из продукта
-                fieldnames = list(product.keys())
-
-                # Создать DictWriter с динамическими заголовками
-                writer = csv.DictWriter(file, fieldnames=fieldnames)
-
-                # Если файл пустой, записать заголовки
-                if file.tell() == 0:
-                    writer.writeheader()
-
-                # Записать строку с данными продукта
-                writer.writerow(product)
-        except Exception as e:
-            logging.error(f"Failed to write product to CSV: {e}")
-            logging.debug(traceback.format_exc())
-
-def product_exists_in_csv(plu, filename):
-    try:
-        with open(filename, mode='r', newline='', encoding='utf-8') as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                if row['plu'] == str(plu):
-                    return True
-    except Exception as e:
-        logging.error(f"Failed to read products from CSV to check existence: {e}")
-
-    return False
+            logging.error(f"Failed to read products from CSV to check existence: {e}")
+            return False
 
 
-def get_categories(filename):
-    conn = http.client.HTTPSConnection("5d.5ka.ru", timeout=30)
+class CategoryFetcher:
+    def __init__(self, connection: http.client.HTTPConnection, headers: Dict[str, str]):
+        self.conn = connection
+        self.headers = headers
+
+    def fetch_categories(self, url: str) -> List[Dict]:
+        """
+        Makes an HTTP request to fetch categories and returns the parsed JSON response.
+        """
+        request = HttpRequest.HttpRequest(self.conn, self.headers)
+        response_json = request.make_request(url)
+
+        # Log the response to see its structure
+        logging.debug(f"Response JSON: {response_json}")
+
+        if response_json is None:
+            return []
+
+        # Check if the response is a list or dictionary
+        if isinstance(response_json, list):
+            # If it's a list, return it directly
+            return response_json
+        elif isinstance(response_json, dict):
+            # If it's a dictionary, attempt to get the "categories" field
+            return response_json.get("categories", [])
+        else:
+            logging.error("Unexpected response format.")
+            return []
+
+
+@task
+def fetch_categories_to_csv(category_filename: str):
+    """
+    Fetches categories and writes them to the given CSV file.
+    """
+    connection = http.client.HTTPSConnection("5d.5ka.ru", timeout=30)
     headers = {
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'en-US,en;q=0.9,ru;q=0.8',
+        'cache-control': 'max-age=0',
+        'cookie': '_ym_uid=173316308568681682; _ym_d=1733163085; spid=1733163085737_552f5f9dace3e0d2f95d9abb82027463_v10rr7ukjh50i01w; TS01658276=01a2d8bbf4e92763247e70599ede247df8ceec63a3a8101dec40a7890ef34238b551bd2dd4756efe3c3d7c0ac42eafd948265241a8; spsc=1734837045813_d251d973d469922bbd4353086279baca_e6cfb3ea8f0a0fa28cc6ebefdcae8ea5; SRV=cd724344-8da6-4878-8d00-1a74c6f83755; TS018c7dc5=01a2d8bbf469b5f37806429663301137caa0caf1dc42905f8c41e7f4e9b81247aba7b7b4e527a5fb7e31e370e8bb95a513ed71e621d053eac628d3953933a8baa17989feae',
+        'dnt': '1',
+        'priority': 'u=0, i',
+        'sec-ch-ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
         'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Cookie': 'SRV=cd724344-8da6-4878-8d00-1a74c6f83755; TS018c7dc5=01a2d8bbf43f22e3fce54fc3d890180844d7886df8fed2ce938af00dce4ee9cb0ef57fbd2118149df50ab7eb1a7930999fe85a4b6628b688b18856a8317de06a49752de828; spid=1733520799386_e543c3b91a10b7c053082fc3c63b0279_1rbutvtmmdxdebk6; spsc=1733536555906_02907cc99f04884d84155d42063e60d7_86072290ac14b79035acac92a3210c54'
+        'x-aer-mesh': 'bx-media-kit-api:BX-79899'
     }
 
-    request = HttpRequest(conn, headers)
+    # Ensure the CSV file exists by creating an empty file if it doesn't exist
+    if not os.path.exists(category_filename):
+        with open(category_filename, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=['Category ID', 'Category', 'Subcategory ID', 'Subcategory'])
+            writer.writeheader()
+
+    fetcher = CategoryFetcher(connection, headers)
     url = "/api/catalog/v1/stores/Y232/categories?mode=delivery&include_subcategories=1"
+    categories = fetcher.fetch_categories(url)
 
-    response_json = request.make_request(url)
+    if categories:
+        CsvHandler.write_category_to_csv(categories, category_filename)
+    else:
+        logging.error(f"Failed to fetch or process categories for {category_filename}")
 
-    if response_json is None:
+
+@task
+def fetch_products_for_subcategory(subcategory_id: str, subcategory_name: str, subcategory_desirability: str,
+                                   products_filename: str):
+    """
+    Fetches products for the given subcategory and writes them to CSV if they do not already exist.
+    """
+    connection = http.client.HTTPSConnection("5d.5ka.ru", timeout=30)
+    headers = {
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'accept-language': 'en-US,en;q=0.9,ru;q=0.8',
+        'cookie': '_ym_uid=173316308568681682; _ym_d=1733163085; spid=1733163085737_552f5f9dace3e0d2f95d9abb82027463_v10rr7ukjh50i01w; TS01658276=01a2d8bbf4e92763247e70599ede247df8ceec63a3a8101dec40a7890ef34238b551bd2dd4756efe3c3d7c0ac42eafd948265241a8; spsc=1734837045813_d251d973d469922bbd4353086279baca_e6cfb3ea8f0a0fa28cc6ebefdcae8ea5; SRV=cd724344-8da6-4878-8d00-1a74c6f83755; TS018c7dc5=01a2d8bbf469b5f37806429663301137caa0caf1dc42905f8c41e7f4e9b81247aba7b7b4e527a5fb7e31e370e8bb95a513ed71e621d053eac628d3953933a8baa17989feae',
+        'dnt': '1',
+        'priority': 'u=0, i',
+        'sec-ch-ua': '"Chromium";v="131", "Not_A Brand";v="24"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"macOS"',
+        'sec-fetch-dest': 'document',
+        'sec-fetch-mode': 'navigate',
+        'sec-fetch-site': 'none',
+        'sec-fetch-user': '?1',
+        'upgrade-insecure-requests': '1',
+        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+        'x-aer-mesh': 'bx-media-kit-api:BX-79899'
+    }
+
+    # Ensure the CSV file exists by creating an empty file if it doesn't exist
+    if not os.path.exists(products_filename):
+        # Attempt to determine all possible fields from an example product
+        # Fetch one product first (optional)
+        request = HttpRequest.HttpRequest(connection, headers)
+        url = "/api/catalog/v2/stores/Y232/products/4260436?mode=delivery&include_restrict=false"
+        product_json = request.make_request(url)
+        if not product_json:
+            logging.error(f"Failed to fetch product example plu = 4260436.")
+            return
+
+        if product_json:
+            product_json["desirability"] = subcategory_desirability
+            fieldnames = product_json.keys()
+
+        with open(products_filename, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+
+    request = HttpRequest.HttpRequest(connection, headers)
+    url = f"/api/catalog/v1/stores/Y232/categories/{subcategory_id}/products?mode=delivery&limit=200"
+
+    products_json = request.make_request(url)
+    if not products_json:
+        logging.error(f"Failed to fetch products for subcategory {subcategory_name}.")
         return
 
-    CsvHandler.write_category_to_csv(response_json, filename)
+    products = products_json.get('products', [])
+    for product in products:
+        plu = product.get('plu')
+        if plu and not CsvProductManager.product_exists_in_csv(plu, products_filename):
+            product_url = f"/api/catalog/v2/stores/Y232/products/{plu}?mode=delivery&include_restrict=false"
+            product_json = request.make_request(product_url)
+            if product_json:
+                # Добавляем поле желательности
+                product_json["desirability"] = subcategory_desirability
+                # Записываем продукт в CSV
+                CsvHandler.write_dynamic_product_to_csv(product_json, products_filename)
 
 
-def getProducts(categoryFileName, productsFileName):
-    conn = http.client.HTTPSConnection("5d.5ka.ru", timeout=30)
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Cookie': 'SRV=cd724344-8da6-4878-8d00-1a74c6f83755; TS018c7dc5=01a2d8bbf43f22e3fce54fc3d890180844d7886df8fed2ce938af00dce4ee9cb0ef57fbd2118149df50ab7eb1a7930999fe85a4b6628b688b18856a8317de06a49752de828; spid=1733520799386_e543c3b91a10b7c053082fc3c63b0279_1rbutvtmmdxdebk6; spsc=1733536555906_02907cc99f04884d84155d42063e60d7_86072290ac14b79035acac92a3210c54'
-    }
+@flow
+def process_products_flow(category_filename: str, products_filename: str):
+    """
+    Основной поток обработки продуктов.
+    """
 
-    request = HttpRequest(conn, headers)
+    categories = CsvHandler.read_categories_from_csv(category_filename)
 
-    categories = CsvHandler.read_categories_from_csv(categoryFileName)
+    futures = []
     for category in categories:
-        for subcategory in category['subcategories']:
-            url = f"/api/catalog/v1/stores/Y232/categories/{subcategory['id']}/products?mode=delivery&limit=200"
-            products_json = request.make_request(url)
+        subcategories = category["subcategories"]
 
-            if products_json is None:
-                logging.error(f"Failed to fetch products for subcategory: {subcategory['name']}")
-                continue
+        # Используем .map для создания задач
+        futures += fetch_products_for_subcategory.map(
+            [subcategory['id'] for subcategory in subcategories],
+            [subcategory['name'] for subcategory in subcategories],
+            [subcategory['desirability'] for subcategory in subcategories],
+            [products_filename] * len(subcategories)
+        )
 
-            products = products_json.get('products', [])
-            for product in products:
-                plu = product.get('plu')
-                if plu:
-                    if product_exists_in_csv(plu, productsFileName):
-                        continue
-
-                    product_url = f"/api/catalog/v2/stores/Y232/products/{plu}?mode=delivery&include_restrict=false"
-                    product_json = request.make_request(product_url)
-
-                    if product_json is None:
-                        logging.error(f"Failed to fetch product details for PLU: {plu}")
-                        continue
-
-                    CsvHandler.write_dynamic_product_to_csv(product_json, productsFileName)
+    # Ждем завершения всех задач
+    for future in futures:
+        future.wait()
