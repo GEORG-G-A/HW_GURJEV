@@ -2,7 +2,7 @@ import sqlite3 as sq
 import os
 
 # Сетевой путь к базе данных
-network_db_path = r"\\Laptop-q0q1k84b\eda\Project_5oro4ka.db"
+network_db_path = r"\\192.168.1.68\eda\Project_5oro4ka.db"
 
 # Проверка существования файла
 if os.path.exists(network_db_path):
