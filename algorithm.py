@@ -101,6 +101,12 @@ def input_with_validation(prompt, validation, max_attempts=3):
     print("Превышено количество попыток ввода. Перезапустите программу.")
     exit()
 
+# Сохранение недельного меню в файл JSON
+def save_weekly_menu_to_json(weekly_menu, filename="weekly_menu.json"):
+    with open(filename, "w", encoding="utf-8") as file:
+        json.dump(weekly_menu, file, ensure_ascii=False, indent=4)
+    print(f"Weekly menu saved to {filename}.")
+
 # Загрузка данных пользователя
 user_data = load_user_data()
 if user_data:
@@ -240,15 +246,26 @@ def generate_weekly_menu(categories, weekly_fat, weekly_protein, weekly_carbs):
 
             portion_factor = product["Weight"] / 100
 
-            weekly_products.append({
-                "Product Name": product["Product Name"],
-                "Portion (g/ml)": product["Weight"],
-                "Calories": product["Nutrients Calories"] * portion_factor,
-                "Protein": product["Nutrients Protein"] * portion_factor,
-                "Fat": product["Nutrients Fat"] * portion_factor,
-                "Carbs": product["Nutrients Carbs"] * portion_factor,
-                "Score": product["Score"],  # Добавление "Score"
-                "Desirability": product["Desirability"]  # Включение Desirability
+            # Корректировка шансов в зависимости от рейтинга Desirability
+            desirability = product["Desirability"]
+            if desirability > 7:
+                weight = 1.5  # Увеличиваем вероятность выбора продуктов с высокими оценками
+            elif desirability < 4:
+                weight = 0.5  # Уменьшаем вероятность для продуктов с низкими оценками
+            else:
+                weight = 1  # Нормальный вес для продуктов с рейтингом от 4 до 7
+
+
+            if random.random()< weight:
+                weekly_products.append({
+                   "Product Name": product["Product Name"],
+                   "Portion (g/ml)": product["Weight"],
+                   "Calories": product["Nutrients Calories"] * portion_factor,
+                   "Protein": product["Nutrients Protein"] * portion_factor,
+                   "Fat": product["Nutrients Fat"] * portion_factor,
+                   "Carbs": product["Nutrients Carbs"] * portion_factor,
+                   "Score": product["Score"],  # Добавление "Score"
+                   "Desirability": product["Desirability"]  # Включение Desirability
             })
 
             remaining_fat -= product["Nutrients Fat"] * portion_factor
@@ -277,6 +294,40 @@ def generate_weekly_menu(categories, weekly_fat, weekly_protein, weekly_carbs):
    #print("Failed to generate a menu within the allowed attempts.")
    #return None
 
+# Сохранение целевых значений КБЖУ
+def save_daily_weekly_targets_to_json(daily_calories, daily_protein, daily_fat, daily_carbs,
+                                      weekly_calories, weekly_protein, weekly_fat, weekly_carbs,
+                                      filename="kbju_targets.json"):
+    targets = {
+        "Daily": {
+            "Calories": daily_calories,
+            "Protein (g)": daily_protein,
+            "Fat (g)": daily_fat,
+            "Carbs (g)": daily_carbs
+        },
+        "Weekly": {
+            "Calories": weekly_calories,
+            "Protein (g)": weekly_protein,
+            "Fat (g)": weekly_fat,
+            "Carbs (g)": weekly_carbs
+        }
+    }
+    with open(filename, "w", encoding="utf-8") as file:
+        json.dump(targets, file, ensure_ascii=False, indent=4)
+    print(f"КБЖУ цели сохранены в файл {filename}.")
+
+# Сохранение данных о целевых значениях КБЖУ
+save_daily_weekly_targets_to_json(
+    daily_calories=daily_calories,
+    daily_protein=daily_protein_grams,
+    daily_fat=daily_fat_grams,
+    daily_carbs=daily_carb_grams,
+    weekly_calories=weekly_calories,
+    weekly_protein=weekly_protein_grams,
+    weekly_fat=weekly_fat_grams,
+    weekly_carbs=weekly_carb_grams
+)
+
 # Генерация меню
 weekly_menu = generate_weekly_menu(
     categories,
@@ -300,3 +351,7 @@ if weekly_menu:
     print(f"Fat: {total_fat:.2f} g")
     print(f"Carbs: {total_carbs:.2f} g")
     print(f"Total Score: {total_score:.2f}")
+
+    # Если меню создано, сохраняем его
+    save_weekly_menu_to_json(weekly_menu)
+

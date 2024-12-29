@@ -1,0 +1,302 @@
+[
+    {
+        "Product Name": "Паштет Егорьевская ФКГ Мясной из печени 150г",
+        "Portion (g/ml)": 150.0,
+        "Calories": 331.5,
+        "Protein": 19.5,
+        "Fat": 18.75,
+        "Carbs": 9.75,
+        "Score": 7.33,
+        "Desirability": 6.0
+    },
+    {
+        "Product Name": "Сочень с творогом 91г",
+        "Portion (g/ml)": 91.0,
+        "Calories": 346.71000000000004,
+        "Protein": 7.28,
+        "Fat": 16.653000000000002,
+        "Carbs": 41.951,
+        "Score": 6.67,
+        "Desirability": 2.0
+    },
+    {
+        "Product Name": "Напиток энергетический Gorilla 0.45л",
+        "Portion (g/ml)": 450.0,
+        "Calories": 234.0,
+        "Protein": 0.0,
+        "Fat": 0.0,
+        "Carbs": 57.15,
+        "Score": 6.67,
+        "Desirability": 1.0
+    },
+    {
+        "Product Name": "Мацони Ростагроэкспорт 3.2% БЗМЖ 300г",
+        "Portion (g/ml)": 300.0,
+        "Calories": 162.0,
+        "Protein": 8.399999999999999,
+        "Fat": 9.600000000000001,
+        "Carbs": 10.8,
+        "Score": 7.33,
+        "Desirability": 6.0
+    },
+    {
+        "Product Name": "Наггетсы Вязанка с индейкой замороженные 250г",
+        "Portion (g/ml)": 250.0,
+        "Calories": 625.0,
+        "Protein": 27.5,
+        "Fat": 30.0,
+        "Carbs": 60.0,
+        "Score": 5.33,
+        "Desirability": 4.0
+    },
+    {
+        "Product Name": "Творог Станция Молочная 5% БЗМЖ 180г",
+        "Portion (g/ml)": 180.0,
+        "Calories": 217.8,
+        "Protein": 28.8,
+        "Fat": 9.0,
+        "Carbs": 5.4,
+        "Score": 8.0,
+        "Desirability": 7.0
+    },
+    {
+        "Product Name": "Салат сельдь под шубой Пятерочка Кафе 250г",
+        "Portion (g/ml)": 250.0,
+        "Calories": 470.0,
+        "Protein": 15.5,
+        "Fat": 36.25,
+        "Carbs": 20.0,
+        "Score": 6.0,
+        "Desirability": 3.0
+    },
+    {
+        "Product Name": "Паштет Hame с индейкой 105г",
+        "Portion (g/ml)": 105.0,
+        "Calories": 241.5,
+        "Protein": 7.3500000000000005,
+        "Fat": 23.1,
+        "Carbs": 5.25,
+        "Score": 6.0,
+        "Desirability": 6.0
+    },
+    {
+        "Product Name": "Коктейль молочный Растишка со вкусом клубники 2% БЗМЖ 210г",
+        "Portion (g/ml)": 210.0,
+        "Calories": 147.0,
+        "Protein": 6.93,
+        "Fat": 4.2,
+        "Carbs": 21.0,
+        "Score": 6.67,
+        "Desirability": 4.0
+    },
+    {
+        "Product Name": "Форель Fish House слабосоленая филе-кусок 200г",
+        "Portion (g/ml)": 200.0,
+        "Calories": 280.0,
+        "Protein": 4.0,
+        "Fat": 12.0,
+        "Carbs": 0.0,
+        "Score": 6.67,
+        "Desirability": 6.0
+    },
+    {
+        "Product Name": "Рис Global Village Для плова 800г",
+        "Portion (g/ml)": 800.0,
+        "Calories": 3360.0,
+        "Protein": 48.0,
+        "Fat": 72.0,
+        "Carbs": 632.0,
+        "Score": 8.0,
+        "Desirability": 8.0
+    },
+    {
+        "Product Name": "Соус Astoria Сырный на основе растительных масел 20% 233г",
+        "Portion (g/ml)": 233.0,
+        "Calories": 512.6,
+        "Protein": 1.165,
+        "Fat": 46.6,
+        "Carbs": 19.805,
+        "Score": 6.33,
+        "Desirability": 2.0
+    },
+    {
+        "Product Name": "Колбаса Черкизово Сальчичон сырокопченая нарезка 100г",
+        "Portion (g/ml)": 100.0,
+        "Calories": 351.0,
+        "Protein": 17.0,
+        "Fat": 31.0,
+        "Carbs": 1.0,
+        "Score": 6.0,
+        "Desirability": 4.0
+    },
+    {
+        "Product Name": "Макароны Шебекинские спирали №366, 450г",
+        "Portion (g/ml)": 450.0,
+        "Calories": 1575.0,
+        "Protein": 58.5,
+        "Fat": 6.75,
+        "Carbs": 324.0,
+        "Score": 8.33,
+        "Desirability": 8.0
+    },
+    {
+        "Product Name": "Чернослив MixBar без косточки 200г",
+        "Portion (g/ml)": 200.0,
+        "Calories": 500.0,
+        "Protein": 6.0,
+        "Fat": 0.6,
+        "Carbs": 120.0,
+        "Score": 8.0,
+        "Desirability": 4.0
+    },
+    {
+        "Product Name": "Тыква в ассортименте",
+        "Portion (g/ml)": 3200.0,
+        "Calories": 640.0,
+        "Protein": 22.4,
+        "Fat": 3.2,
+        "Carbs": 121.6,
+        "Score": 7.33,
+        "Desirability": 8.0
+    },
+    {
+        "Product Name": "Колбаски Ремит Grizzly куриные сырокопченый 40г",
+        "Portion (g/ml)": 40.0,
+        "Calories": 160.0,
+        "Protein": 10.4,
+        "Fat": 12.4,
+        "Carbs": 1.2000000000000002,
+        "Score": 5.33,
+        "Desirability": 5.0
+    },
+    {
+        "Product Name": "Креветки Fish House средние 500г",
+        "Portion (g/ml)": 500.0,
+        "Calories": 400.0,
+        "Protein": 85.0,
+        "Fat": 5.0,
+        "Carbs": 5.0,
+        "Score": 8.67,
+        "Desirability": 7.0
+    },
+    {
+        "Product Name": "Яйцо куриное С1 30шт.",
+        "Portion (g/ml)": -1.0,
+        "Calories": -4.17,
+        "Protein": -0.048,
+        "Fat": -0.414,
+        "Carbs": -0.066,
+        "Score": 5.0,
+        "Desirability": 10.0
+    },
+    {
+        "Product Name": "Паштет Мясная Ферма печеночный со вкусом гусиного мяса 200г",
+        "Portion (g/ml)": 200.0,
+        "Calories": 570.0,
+        "Protein": 20.0,
+        "Fat": 50.0,
+        "Carbs": 10.0,
+        "Score": 5.67,
+        "Desirability": 6.0
+    },
+    {
+        "Product Name": "Хлеб Рижский хлеб Ароматный ржано-пшеничный подовый с изюмом 300г",
+        "Portion (g/ml)": 300.0,
+        "Calories": 735.0,
+        "Protein": 24.299999999999997,
+        "Fat": 3.0,
+        "Carbs": 153.0,
+        "Score": 7.0,
+        "Desirability": 5.0
+    },
+    {
+        "Product Name": "Ребрышки свиные Слово Мясника в ягодном маринаде",
+        "Portion (g/ml)": 1000.0,
+        "Calories": 4800.0,
+        "Protein": 80.0,
+        "Fat": 500.0,
+        "Carbs": 0.0,
+        "Score": 5.33,
+        "Desirability": 6.0
+    },
+    {
+        "Product Name": "Яйцо шоколадное Kinder Сюрприз Maxi с игрушкой-сюрпризом 100г",
+        "Portion (g/ml)": 100.0,
+        "Calories": 579.0,
+        "Protein": 8.8,
+        "Fat": 5.2,
+        "Carbs": 53.9,
+        "Score": 5.33,
+        "Desirability": 2.0
+    },
+    {
+        "Product Name": "Кубики Петелинка из филе грудки цыпленка охлажденные 550г",
+        "Portion (g/ml)": 550.0,
+        "Calories": 605.0,
+        "Protein": 115.5,
+        "Fat": 13.75,
+        "Carbs": 0.0,
+        "Score": 8.0,
+        "Desirability": 8.0
+    },
+    {
+        "Product Name": "Персики Global Village половинки в сиропе 820г",
+        "Portion (g/ml)": 850.0,
+        "Calories": 552.5,
+        "Protein": 4.25,
+        "Fat": 0.0,
+        "Carbs": 136.0,
+        "Score": 4.67,
+        "Desirability": 5.0
+    },
+    {
+        "Product Name": "Яйцо куриное Село Зеленое Деревенское С0 10шт.",
+        "Portion (g/ml)": -1.0,
+        "Calories": -6.53,
+        "Protein": -0.127,
+        "Fat": -0.115,
+        "Carbs": -0.006999999999999999,
+        "Score": 8.33,
+        "Desirability": 9.0
+    },
+    {
+        "Product Name": "Напиток Святой источник Зеленый чай Лимон негазированный 1л",
+        "Portion (g/ml)": 1000.0,
+        "Calories": 200.0,
+        "Protein": 0.0,
+        "Fat": 0.0,
+        "Carbs": 45.0,
+        "Score": 6.0,
+        "Desirability": 1.0
+    },
+    {
+        "Product Name": "Жевательные палочки Troffyum ассорти с фруктовым вкусом 150г",
+        "Portion (g/ml)": 150.0,
+        "Calories": 609.0,
+        "Protein": 3.0,
+        "Fat": 9.0,
+        "Carbs": 129.0,
+        "Score": 5.0,
+        "Desirability": 2.0
+    },
+    {
+        "Product Name": "Творог РостАгроЭкспорт 9% БЗМЖ 180г",
+        "Portion (g/ml)": 180.0,
+        "Calories": 282.6,
+        "Protein": 28.8,
+        "Fat": 16.2,
+        "Carbs": 5.4,
+        "Score": 8.33,
+        "Desirability": 7.0
+    },
+    {
+        "Product Name": "Какао-напиток Хрутка быстрорастворимый 480г",
+        "Portion (g/ml)": 480.0,
+        "Calories": 1876.8,
+        "Protein": 25.439999999999998,
+        "Fat": 13.44,
+        "Carbs": 398.4,
+        "Score": 7.0,
+        "Desirability": 2.0
+    }
+]
